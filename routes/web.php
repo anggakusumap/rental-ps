@@ -45,6 +45,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('orders/create', [OrderController::class, 'create'])->name('orders.create');
     Route::post('orders', [OrderController::class, 'store'])->name('orders.store');
     Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::post('orders/{order}/mark-paid', [OrderController::class, 'markAsPaid'])->name('orders.mark-paid');
 
     // Invoices
     Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');

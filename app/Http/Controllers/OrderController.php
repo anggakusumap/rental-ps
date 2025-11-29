@@ -61,4 +61,19 @@ class OrderController extends Controller
         $order->load(['items.foodItem', 'rentalSession', 'user']);
         return view('orders.show', compact('order'));
     }
+
+    public function markAsPaid(Request $request, Order $order)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:cash,card,transfer',
+        ]);
+
+        $order->update([
+            'payment_status' => 'paid',
+            'payment_method' => $validated['payment_method'],
+        ]);
+
+        return redirect()->route('orders.show', $order)
+            ->with('success', 'Order marked as paid successfully');
+    }
 }
