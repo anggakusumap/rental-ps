@@ -76,8 +76,7 @@
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Console</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Customer</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Package</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Start Time</th>
-                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Duration</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Timer</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Status</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Cost</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
@@ -113,14 +112,28 @@
                                 <span class="text-sm text-gray-500">Hourly</span>
                             @endif
                         </td>
-                        <td class="px-6 py-4 text-sm text-gray-900">
-                            {{ $session->start_time->format('M d, H:i') }}
-                        </td>
-                        <td class="px-6 py-4 text-sm text-gray-900">
-                            @if($session->end_time)
-                                {{ $session->start_time->diffInMinutes($session->end_time) }} min
+                        <td class="px-6 py-4">
+                            @if(in_array($session->status, ['active', 'paused']))
+                                @php
+                                    $packageMinutes = $session->package ? $session->package->duration_minutes : 60;
+                                    $startTime = $session->start_time->timestamp;
+                                    $pausedMinutes = $session->total_paused_minutes;
+                                    $currentPausedTime = $session->status === 'paused' && $session->paused_at
+                                        ? now()->diffInMinutes($session->paused_at)
+                                        : 0;
+                                    $totalPausedMinutes = $pausedMinutes + $currentPausedTime;
+                                @endphp
+                                <div class="countdown-timer font-mono text-lg font-bold"
+                                     data-session-id="{{ $session->id }}"
+                                     data-start-time="{{ $startTime }}"
+                                     data-package-minutes="{{ $packageMinutes }}"
+                                     data-paused-minutes="{{ $totalPausedMinutes }}"
+                                     data-status="{{ $session->status }}"
+                                     data-server-time="{{ now()->timestamp }}">
+                                    <span class="timer-display text-green-600">--:--:--</span>
+                                </div>
                             @else
-                                {{ $session->start_time->diffInMinutes(now()) }} min
+                                <span class="text-sm text-gray-500">--:--:--</span>
                             @endif
                         </td>
                         <td class="px-6 py-4">
@@ -160,7 +173,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-12 text-center">
+                        <td colspan="8" class="px-6 py-12 text-center">
                             <div class="flex flex-col items-center justify-center">
                                 <div class="bg-gray-100 rounded-full p-6 mb-4">
                                     <i class="fas fa-gamepad text-4xl text-gray-400"></i>
@@ -184,4 +197,156 @@
             </div>
         @endif
     </div>
+
+    <!-- Alarm Audio (Hidden) -->
+    <audio id="alarmSound" preload="auto">
+        <source src="{{ asset('sounds/alarm.mp3') }}" type="audio/mpeg">
+        <source src="{{ asset('sounds/alarm.ogg') }}" type="audio/ogg">
+    </audio>
+
+    <!-- Timer Expired Modal -->
+    <div id="timerExpiredModal" class="hidden fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4 animate-pulse">
+            <div class="text-center">
+                <div class="bg-red-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-bell text-4xl text-red-600 animate-bounce"></i>
+                </div>
+                <h3 class="text-2xl font-bold text-red-600 mb-2">TIME'S UP!</h3>
+                <p class="text-gray-700 mb-4">Session <span id="expiredSessionId"></span> has expired</p>
+                <p class="text-sm text-gray-600 mb-6">Console: <span id="expiredConsole"></span></p>
+                <div class="flex space-x-3">
+                    <button onclick="stopAlarm()" class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-semibold">
+                        <i class="fas fa-stop mr-2"></i>Stop Alarm
+                    </button>
+                    <button onclick="viewExpiredSession()" class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold">
+                        <i class="fas fa-eye mr-2"></i>View Session
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let timers = {};
+        let alarmPlaying = false;
+        let expiredSessionId = null;
+        const serverTimeOffset = {{ now()->timestamp }} * 1000 - Date.now();
+
+        function getServerTime() {
+            return Date.now() + serverTimeOffset;
+        }
+
+        function initializeTimers() {
+            document.querySelectorAll('.countdown-timer').forEach(element => {
+                const sessionId = element.dataset.sessionId;
+                const startTime = parseInt(element.dataset.startTime) * 1000;
+                const packageMinutes = parseInt(element.dataset.packageMinutes);
+                const pausedMinutes = parseInt(element.dataset.pausedMinutes);
+                const status = element.dataset.status;
+
+                if (status === 'paused') {
+                    const remainingMinutes = packageMinutes - pausedMinutes;
+                    updateTimerDisplay(element, remainingMinutes * 60, true);
+                    return;
+                }
+
+                timers[sessionId] = setInterval(() => {
+                    updateTimer(sessionId, startTime, packageMinutes, pausedMinutes, element);
+                }, 1000);
+            });
+        }
+
+        function updateTimer(sessionId, startTime, packageMinutes, pausedMinutes, element) {
+            const now = getServerTime();
+            const elapsedMs = now - startTime;
+            const elapsedMinutes = Math.floor(elapsedMs / 60000);
+            const elapsedSeconds = Math.floor(elapsedMs / 1000);
+            const activeMinutes = elapsedMinutes - pausedMinutes;
+            const activeSeconds = elapsedSeconds - (pausedMinutes * 60);
+
+            const packageSeconds = packageMinutes * 60;
+            const remainingSeconds = packageSeconds - activeSeconds;
+
+            if (remainingSeconds <= 0) {
+                triggerAlarm(sessionId, element);
+                clearInterval(timers[sessionId]);
+                return;
+            }
+
+            updateTimerDisplay(element, remainingSeconds, false);
+        }
+
+        function updateTimerDisplay(element, totalSeconds, isPaused) {
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+
+            const display = element.querySelector('.timer-display');
+            const timeString = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+
+            display.textContent = timeString;
+
+            const totalMinutes = Math.floor(totalSeconds / 60);
+
+            if (isPaused) {
+                display.className = 'timer-display text-yellow-600';
+            } else if (totalMinutes <= 5) {
+                display.className = 'timer-display text-red-600 font-bold animate-pulse';
+            } else if (totalMinutes <= 15) {
+                display.className = 'timer-display text-orange-600';
+            } else {
+                display.className = 'timer-display text-green-600';
+            }
+        }
+
+        function triggerAlarm(sessionId, element) {
+            if (alarmPlaying) return;
+
+            alarmPlaying = true;
+            expiredSessionId = sessionId;
+
+            const audio = document.getElementById('alarmSound');
+            audio.loop = true;
+            audio.volume = 1.0;
+            audio.play().catch(e => console.error('Audio play failed:', e));
+
+            const consoleName = element.closest('tr').querySelector('td:nth-child(2) .text-sm').textContent;
+            document.getElementById('expiredSessionId').textContent = '#' + sessionId;
+            document.getElementById('expiredConsole').textContent = consoleName;
+            document.getElementById('timerExpiredModal').classList.remove('hidden');
+
+            element.querySelector('.timer-display').textContent = '00:00:00';
+            element.querySelector('.timer-display').className = 'timer-display text-red-600 font-bold animate-pulse';
+        }
+
+        function stopAlarm() {
+            const audio = document.getElementById('alarmSound');
+            audio.pause();
+            audio.currentTime = 0;
+            audio.loop = false;
+            alarmPlaying = false;
+            document.getElementById('timerExpiredModal').classList.add('hidden');
+
+            if (confirm('Do you want to end this session now?')) {
+                window.location.href = `/rental-sessions/${expiredSessionId}`;
+            }
+        }
+
+        function viewExpiredSession() {
+            stopAlarm();
+            window.location.href = `/rental-sessions/${expiredSessionId}`;
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initializeTimers();
+        });
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            Object.keys(timers).forEach(sessionId => {
+                clearInterval(timers[sessionId]);
+            });
+        });
+    </script>
 @endsection
