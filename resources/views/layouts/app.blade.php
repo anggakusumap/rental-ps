@@ -34,7 +34,7 @@
                         <i class="fas fa-tachometer-alt w-5"></i>
                         <span class="ml-3">Dashboard</span>
                     </a>
-                    <a href="{{ route('customers.index') }}" class="flex items-center px-6 py-3 hover:bg-gray-100 {{ request()->routeIs('rental-sessions.*') ? 'bg-indigo-50 text-indigo-600' : '' }}">
+                    <a href="{{ route('customers.index') }}" class="flex items-center px-6 py-3 hover:bg-gray-100 {{ request()->routeIs('customers.*') ? 'bg-indigo-50 text-indigo-600' : '' }}">
                         <i class="fas fa-users w-5"></i>
                         <span class="ml-3">Customers</span>
                     </a>

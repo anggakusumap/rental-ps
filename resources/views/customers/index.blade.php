@@ -112,7 +112,7 @@
                             @endif
                         </td>
                         <td class="px-6 py-4">
-                            <div class="flex space-x-2">
+                            <div class="flex space-x-3 items-center">
                                 <a href="{{ route('customers.show', $customer) }}" class="text-blue-600 hover:text-blue-900 font-medium text-sm">
                                     View
                                 </a>
@@ -123,7 +123,7 @@
                                     <form method="POST" action="{{ route('customers.destroy', $customer) }}" class="inline" onsubmit="return confirm('Delete this customer?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-900 font-medium text-sm">
+                                        <button type="submit" class="text-red-600 hover:text-red-900 font-medium text-sm mb-1">
                                             Delete
                                         </button>
                                     </form>
