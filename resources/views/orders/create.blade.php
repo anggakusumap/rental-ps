@@ -25,7 +25,7 @@
                             </div>
                             <div>
                                 <p class="text-blue-600 font-medium">Customer</p>
-                                <p class="text-blue-900">{{ $session->customer_name ?? 'Walk-in' }}</p>
+                                <p class="text-blue-900">{{ $session->customer ? $session->customer->name : ($session->customer_name ?? 'Walk-in') }}</p>
                             </div>
                         </div>
                     </div>
@@ -50,7 +50,8 @@
                             </h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 @foreach($items as $item)
-                                    <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition cursor-pointer {{ $item->stock == 0 ? 'opacity-50' : '' }}" onclick="addToCart({{ $item->id }}, '{{ $item->name }}', {{ $item->price }}, {{ $item->stock }})">
+                                    <div class="border-2 border-gray-200 rounded-lg p-4 hover:border-indigo-300 transition cursor-pointer {{ $item->stock == 0 ? 'opacity-50' : '' }}"
+                                         onclick="addToCart({{ $item->id }}, '{{ addslashes($item->name) }}', {{ $item->price }}, {{ $item->stock }})">
                                         <div class="flex items-start justify-between">
                                             <div class="flex-1">
                                                 <h4 class="font-bold text-gray-800">{{ $item->name }}</h4>
@@ -63,12 +64,12 @@
                                                 <div class="mt-2">
                                                     @if($item->stock > 0)
                                                         <span class="text-xs {{ $item->stock < 10 ? 'text-yellow-600' : 'text-green-600' }} font-medium">
-                                                <i class="fas fa-box mr-1"></i>Stock: {{ $item->stock }}
-                                            </span>
+                                                            <i class="fas fa-box mr-1"></i>Stock: {{ $item->stock }}
+                                                        </span>
                                                     @else
                                                         <span class="text-xs text-red-600 font-medium">
-                                                <i class="fas fa-times-circle mr-1"></i>Out of Stock
-                                            </span>
+                                                            <i class="fas fa-times-circle mr-1"></i>Out of Stock
+                                                        </span>
                                                     @endif
                                                 </div>
                                             </div>
@@ -113,10 +114,23 @@
 
                         @if($session)
                             <input type="hidden" name="rental_session_id" value="{{ $session->id }}">
-                            <input type="hidden" name="customer_name" value="{{ $session->customer_name }}">
+                            @if($session->customer_id)
+                                <input type="hidden" name="customer_id" value="{{ $session->customer_id }}">
+                            @elseif($session->customer_name)
+                                <input type="hidden" name="customer_name" value="{{ $session->customer_name }}">
+                            @endif
                         @else
                             <div class="mb-4">
-                                <label class="block text-gray-700 font-medium mb-2">Customer Name (Optional)</label>
+                                <label class="block text-gray-700 font-medium mb-2">Customer (Optional)</label>
+                                <select name="customer_id" id="customerSelect" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition">
+                                    <option value="">Walk-in Customer</option>
+                                    @foreach(\App\Models\Customer::where('is_active', true)->orderBy('name')->get() as $customer)
+                                        <option value="{{ $customer->id }}">{{ $customer->name }} - {{ $customer->phone }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div class="mb-4" id="walkInNameField">
+                                <label class="block text-gray-700 font-medium mb-2">Walk-in Name (Optional)</label>
                                 <input type="text" name="customer_name" placeholder="Enter customer name" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition">
                             </div>
                         @endif
@@ -164,7 +178,16 @@
 
     <script>
         let cart = {};
-        let itemCounter = 0;
+
+        // Toggle walk-in name field
+        document.getElementById('customerSelect')?.addEventListener('change', function(e) {
+            const walkInField = document.getElementById('walkInNameField');
+            if (e.target.value === '') {
+                walkInField.classList.remove('hidden');
+            } else {
+                walkInField.classList.add('hidden');
+            }
+        });
 
         function addToCart(itemId, itemName, itemPrice, maxStock) {
             if (maxStock === 0) {
@@ -180,7 +203,6 @@
                     quantity: 1,
                     maxStock: maxStock
                 };
-                itemCounter++;
             } else {
                 if (cart[itemId].quantity < maxStock) {
                     cart[itemId].quantity++;
@@ -212,9 +234,10 @@
         }
 
         function removeFromCart(itemId) {
-            delete cart[itemId];
-            itemCounter--;
-            renderCart();
+            if (confirm('Remove this item from cart?')) {
+                delete cart[itemId];
+                renderCart();
+            }
         }
 
         function renderCart() {
@@ -222,40 +245,47 @@
             const emptyCart = document.getElementById('emptyCart');
 
             if (Object.keys(cart).length === 0) {
-                emptyCart.classList.remove('hidden');
                 cartItemsContainer.innerHTML = '';
-                cartItemsContainer.appendChild(emptyCart);
+                const emptyDiv = document.createElement('div');
+                emptyDiv.id = 'emptyCart';
+                emptyDiv.className = 'text-center py-8 text-gray-400';
+                emptyDiv.innerHTML = `
+                    <i class="fas fa-shopping-cart text-4xl mb-3"></i>
+                    <p>Cart is empty</p>
+                    <p class="text-sm">Click on items to add</p>
+                `;
+                cartItemsContainer.appendChild(emptyDiv);
                 document.getElementById('submitBtn').classList.remove('hidden');
                 document.getElementById('submitBtnActive').classList.add('hidden');
             } else {
-                emptyCart.classList.add('hidden');
                 cartItemsContainer.innerHTML = '';
 
                 Object.values(cart).forEach(item => {
                     const itemDiv = document.createElement('div');
                     itemDiv.className = 'bg-gray-50 rounded-lg p-3 border-2 border-gray-200';
                     itemDiv.innerHTML = `
-                <div class="flex items-center justify-between mb-2">
-                    <h4 class="font-bold text-gray-800 flex-1">${item.name}</h4>
-                    <button type="button" onclick="removeFromCart(${item.id})" class="text-red-500 hover:text-red-700">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-2">
-                        <button type="button" onclick="updateQuantity(${item.id}, -1)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 w-8 h-8 rounded-lg font-bold">
-                            -
-                        </button>
-                        <input type="number" name="items[${item.id}][quantity]" value="${item.quantity}" readonly class="w-16 text-center border-2 border-gray-300 rounded-lg py-1 font-semibold">
-                        <input type="hidden" name="items[${item.id}][food_item_id]" value="${item.id}">
-                        <button type="button" onclick="updateQuantity(${item.id}, 1)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 w-8 h-8 rounded-lg font-bold">
-                            +
-                        </button>
-                    </div>
-                    <span class="font-bold text-indigo-600">Rp ${(item.price * item.quantity).toLocaleString('id-ID')}</span>
-                </div>
-                <p class="text-xs text-gray-500 mt-1">Rp ${item.price.toLocaleString('id-ID')} each</p>
-            `;
+                        <div class="flex items-center justify-between mb-2">
+                            <h4 class="font-bold text-gray-800 flex-1">${item.name}</h4>
+                            <button type="button" onclick="removeFromCart(${item.id})" class="text-red-500 hover:text-red-700 ml-2">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <button type="button" onclick="updateQuantity(${item.id}, -1)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 w-8 h-8 rounded-lg font-bold">
+                                    -
+                                </button>
+                                <input type="hidden" name="items[${item.id}][food_item_id]" value="${item.id}">
+                                <input type="hidden" name="items[${item.id}][quantity]" value="${item.quantity}">
+                                <span class="w-16 text-center border-2 border-gray-300 rounded-lg py-1 font-semibold">${item.quantity}</span>
+                                <button type="button" onclick="updateQuantity(${item.id}, 1)" class="bg-gray-300 hover:bg-gray-400 text-gray-800 w-8 h-8 rounded-lg font-bold">
+                                    +
+                                </button>
+                            </div>
+                            <span class="font-bold text-indigo-600">Rp ${(item.price * item.quantity).toLocaleString('id-ID')}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-1">Rp ${item.price.toLocaleString('id-ID')} each</p>
+                    `;
                     cartItemsContainer.appendChild(itemDiv);
                 });
 

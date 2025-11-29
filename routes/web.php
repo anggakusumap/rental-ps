@@ -10,7 +10,8 @@ use App\Http\Controllers\{
     FoodCategoryController,
     OrderController,
     InvoiceController,
-    ReportController
+    ReportController,
+    CustomerController
 };
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +40,7 @@ Route::middleware(['auth'])->group(function () {
     // Food & Beverage
     Route::resource('food-categories', FoodCategoryController::class);
     Route::resource('food-items', FoodItemController::class);
+    Route::resource('customers', CustomerController::class);
 
     // Orders
     Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
