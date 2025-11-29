@@ -70,6 +70,7 @@ class OrderController extends Controller
 
         $order->update([
             'payment_status' => 'paid',
+            'status' => 'completed',
             'payment_method' => $validated['payment_method'],
         ]);
 

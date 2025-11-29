@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
@@ -44,10 +43,10 @@ class InvoiceController extends Controller
         ]);
 
         try {
-            $session = $validated['rental_session_id']
+            $session = isset($validated['rental_session_id']) && $validated['rental_session_id']
                 ? RentalSession::find($validated['rental_session_id'])
                 : null;
-            $order = $validated['order_id']
+            $order = isset($validated['order_id']) && $validated['order_id']
                 ? Order::find($validated['order_id'])
                 : null;
 
