@@ -200,8 +200,7 @@
 
     <!-- Alarm Audio (Hidden) -->
     <audio id="alarmSound" preload="auto">
-        <source src="{{ asset('sounds/alarm.mp3') }}" type="audio/mpeg">
-        <source src="{{ asset('sounds/alarm.ogg') }}" type="audio/ogg">
+        <source src="{{ asset('alarm.mp3') }}" type="audio/mpeg">
     </audio>
 
     <!-- Timer Expired Modal -->
