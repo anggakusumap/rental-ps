@@ -18,13 +18,32 @@ class RentalService
                 throw new \Exception('Console is not available');
             }
 
+            // Determine customer information
+            $customerData = [
+                'customer_id' => $data['customer_id'] ?? null,
+                'customer_name' => null,
+            ];
+
+            // If customer_id is provided, get customer name from database
+            if (!empty($data['customer_id'])) {
+                $customer = \App\Models\Customer::find($data['customer_id']);
+                if ($customer) {
+                    $customerData['customer_name'] = $customer->name;
+                }
+            } else {
+                // Use provided walk-in customer name
+                $customerData['customer_name'] = $data['customer_name'] ?? null;
+            }
+
             $session = RentalSession::create([
                 'console_id' => $data['console_id'],
                 'user_id' => auth()->id(),
                 'package_id' => $data['package_id'] ?? null,
-                'customer_name' => $data['customer_name'] ?? null,
+                'customer_id' => $customerData['customer_id'],
+                'customer_name' => $customerData['customer_name'],
                 'start_time' => now(),
                 'status' => 'active',
+                'payment_status' => 'unpaid',
                 'notes' => $data['notes'] ?? null,
             ]);
 
@@ -94,11 +113,12 @@ class RentalService
                 'end_time' => $endTime,
                 'status' => 'completed',
                 'total_cost' => $cost,
+                'payment_status' => 'unpaid', // Ensure it's unpaid when completed
             ]);
 
             $session->console->update(['status' => 'available']);
 
-            return $session;
+            return $session->fresh();
         });
     }
 

@@ -111,9 +111,15 @@ class OrderController extends Controller
 
     public function printReceipt(Order $order)
     {
-        $order->load(['items.foodItem', 'user', 'customer']);
+        $order->load(['items.foodItem', 'user', 'customer', 'invoice']);
 
-        $pdf = Pdf::loadView('orders.thermal-receipt', compact('order'))
+        // Filter only items that belong to food & beverage
+        $foodOrders = collect([$order]);
+
+        $pdf = Pdf::loadView('orders.thermal-receipt', [
+            'order' => $order,
+            'foodOrders' => $foodOrders,
+        ])
             ->setPaper([0, 0, 226.77, 841.89]); // 80mm width thermal paper
 
         return $pdf->download('receipt-order-' . $order->order_number . '.pdf');

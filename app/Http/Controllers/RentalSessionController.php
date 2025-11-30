@@ -7,12 +7,15 @@ use App\Models\RentalSession;
 use App\Models\Console;
 use App\Models\Package;
 use App\Services\RentalService;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 
 class RentalSessionController extends Controller
 {
-    public function __construct(private RentalService $rentalService)
-    {
+    public function __construct(
+        private RentalService $rentalService,
+        private InvoiceService $invoiceService
+    ) {
     }
 
     public function index()
@@ -40,6 +43,7 @@ class RentalSessionController extends Controller
         $validated = $request->validate([
             'console_id' => 'required|exists:consoles,id',
             'package_id' => 'nullable|exists:packages,id',
+            'customer_id' => 'nullable|exists:customers,id',
             'customer_name' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
         ]);
@@ -105,10 +109,58 @@ class RentalSessionController extends Controller
         try {
             $session = $this->rentalService->endSession($rentalSession);
 
-            return redirect()->route('invoices.create', ['session_id' => $session->id])
-                ->with('success', 'Session ended successfully. Create invoice now.');
+            return redirect()->route('rental-sessions.show', $session)
+                ->with('success', 'Session ended successfully. You can now process payment.');
         } catch (\Exception $e) {
             return back()->with('error', $e->getMessage());
         }
+    }
+
+    /**
+     * Mark session as paid (creates invoice and marks it as paid)
+     */
+    public function markAsPaid(Request $request, RentalSession $rentalSession)
+    {
+        $validated = $request->validate([
+            'payment_method' => 'required|string|in:cash,card,transfer',
+        ]);
+
+        try {
+            // Check if session is completed
+            if ($rentalSession->status !== 'completed') {
+                return back()->with('error', 'Cannot process payment for active session. Please end the session first.');
+            }
+
+            // Create or get existing invoice
+            $invoice = $rentalSession->invoice ?? $this->invoiceService->createSessionInvoice($rentalSession);
+
+            // Mark as paid
+            $this->invoiceService->markAsPaid($invoice, $validated['payment_method']);
+
+            return redirect()->route('rental-sessions.show', $rentalSession)
+                ->with('success', 'Payment received successfully');
+        } catch (\Exception $e) {
+            return back()->with('error', 'Error processing payment: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Print thermal receipt for completed session
+     */
+    public function printReceipt(RentalSession $rentalSession)
+    {
+        if ($rentalSession->status !== 'completed') {
+            return back()->with('error', 'Cannot print receipt for active session');
+        }
+
+        $rentalSession->load(['console.consoleType', 'package', 'user', 'invoice']);
+        $foodOrders = \App\Models\Order::where('rental_session_id', $rentalSession->id)
+            ->with('items.foodItem')
+            ->get();
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('rental-sessions.thermal-receipt', compact('rentalSession', 'foodOrders'))
+            ->setPaper([0, 0, 226.77, 841.89]); // 80mm width thermal paper
+
+        return $pdf->download('receipt-session-' . $rentalSession->id . '.pdf');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\Customer;
 use Illuminate\Support\Facades\DB;
 
 class OrderService
@@ -13,12 +14,32 @@ class OrderService
     public function createOrder(array $data): Order
     {
         return DB::transaction(function () use ($data) {
+            // Determine customer information
+            $customerData = [
+                'customer_id' => null,
+                'customer_name' => null,
+            ];
+
+            // If customer_id is provided, get customer name from database
+            if (!empty($data['customer_id'])) {
+                $customer = Customer::find($data['customer_id']);
+                if ($customer) {
+                    $customerData['customer_id'] = $customer->id;
+                    $customerData['customer_name'] = $customer->name;
+                }
+            } else {
+                // Use provided walk-in customer name
+                $customerData['customer_name'] = $data['customer_name'] ?? null;
+            }
+
             $order = Order::create([
                 'rental_session_id' => $data['rental_session_id'] ?? null,
                 'user_id' => auth()->id(),
+                'customer_id' => $customerData['customer_id'],
                 'order_number' => $this->generateOrderNumber(),
-                'customer_name' => $data['customer_name'] ?? null,
+                'customer_name' => $customerData['customer_name'],
                 'status' => 'pending',
+                'payment_status' => 'unpaid',
             ]);
 
             $subtotal = 0;
@@ -53,7 +74,7 @@ class OrderService
                 'total' => $total,
             ]);
 
-            return $order;
+            return $order->fresh();
         });
     }
 
