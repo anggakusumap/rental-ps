@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('rental_session_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
             $table->string('order_number')->unique();
             $table->string('customer_name')->nullable();
             $table->decimal('subtotal', 10, 2)->default(0);

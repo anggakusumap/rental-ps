@@ -40,4 +40,14 @@ class RentalSession extends Model
     {
         return $this->belongsTo(Invoice::class);
     }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
+    }
 }

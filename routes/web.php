@@ -1,70 +1,75 @@
 <?php
 
-use App\Http\Controllers\{
-    DashboardController,
-    ConsoleController,
-    ConsoleTypeController,
-    PackageController,
-    RentalSessionController,
-    FoodItemController,
-    FoodCategoryController,
-    OrderController,
-    InvoiceController,
-    ReportController,
-    CustomerController
-};
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ConsoleController;
+use App\Http\Controllers\ConsoleTypeController;
+use App\Http\Controllers\PackageController;
+use App\Http\Controllers\RentalSessionController;
+use App\Http\Controllers\FoodCategoryController;
+use App\Http\Controllers\FoodItemController;
+use App\Http\Controllers\OrderController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return redirect('/dashboard');
+    return redirect()->route('login');
 });
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', 'verified'])->group(function () {
+    // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Console Management
-    Route::resource('consoles', ConsoleController::class);
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Console Types
     Route::resource('console-types', ConsoleTypeController::class);
+
+    // Consoles
+    Route::resource('consoles', ConsoleController::class);
+
+    // Packages
     Route::resource('packages', PackageController::class);
 
     // Rental Sessions
-    Route::get('rental-sessions', [RentalSessionController::class, 'index'])->name('rental-sessions.index');
-    Route::get('rental-sessions/create', [RentalSessionController::class, 'create'])->name('rental-sessions.create');
-    Route::post('rental-sessions', [RentalSessionController::class, 'store'])->name('rental-sessions.store');
-    Route::get('rental-sessions/{rentalSession}', [RentalSessionController::class, 'show'])->name('rental-sessions.show');
+    Route::resource('rental-sessions', RentalSessionController::class);
     Route::post('rental-sessions/{rentalSession}/pause', [RentalSessionController::class, 'pause'])->name('rental-sessions.pause');
     Route::post('rental-sessions/{rentalSession}/resume', [RentalSessionController::class, 'resume'])->name('rental-sessions.resume');
     Route::post('rental-sessions/{rentalSession}/extend', [RentalSessionController::class, 'extend'])->name('rental-sessions.extend');
     Route::post('rental-sessions/{rentalSession}/end', [RentalSessionController::class, 'end'])->name('rental-sessions.end');
+    Route::post('rental-sessions/{rentalSession}/mark-paid', [RentalSessionController::class, 'markAsPaid'])->name('rental-sessions.mark-paid');
+    Route::get('rental-sessions/{rentalSession}/print-receipt', [RentalSessionController::class, 'printReceipt'])->name('rental-sessions.print-receipt');
 
-    // Food & Beverage
+    // Food Categories
     Route::resource('food-categories', FoodCategoryController::class);
+
+    // Food Items
     Route::resource('food-items', FoodItemController::class);
-    Route::resource('customers', CustomerController::class);
 
     // Orders
-    Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
-    Route::get('orders/create', [OrderController::class, 'create'])->name('orders.create');
-    Route::post('orders', [OrderController::class, 'store'])->name('orders.store');
-    Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
+    Route::resource('orders', OrderController::class);
     Route::post('orders/{order}/mark-paid', [OrderController::class, 'markAsPaid'])->name('orders.mark-paid');
+    Route::get('orders/{order}/print-receipt', [OrderController::class, 'printReceipt'])->name('orders.print-receipt');
 
     // Invoices
-    Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
-    Route::get('invoices/create', [InvoiceController::class, 'create'])->name('invoices.create');
-    Route::post('invoices', [InvoiceController::class, 'store'])->name('invoices.store');
-    Route::get('invoices/{invoice}', [InvoiceController::class, 'show'])->name('invoices.show');
+    Route::resource('invoices', InvoiceController::class)->only(['index', 'show']);
     Route::post('invoices/{invoice}/mark-paid', [InvoiceController::class, 'markAsPaid'])->name('invoices.mark-paid');
     Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'downloadPdf'])->name('invoices.pdf');
 
+    // Customers
+    Route::resource('customers', CustomerController::class);
+
     // Reports
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/', [ReportController::class, 'index'])->name('index');
-        Route::get('/revenue', [ReportController::class, 'revenue'])->name('revenue');
-        Route::get('/usage', [ReportController::class, 'usage'])->name('usage');
-        Route::get('/top-items', [ReportController::class, 'topItems'])->name('top-items');
-        Route::get('/export', [ReportController::class, 'export'])->name('export');
-    });
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/revenue', [ReportController::class, 'revenue'])->name('reports.revenue');
+    Route::get('/reports/usage', [ReportController::class, 'usage'])->name('reports.usage');
+    Route::get('/reports/top-items', [ReportController::class, 'topItems'])->name('reports.top-items');
+    Route::get('/reports/export', [ReportController::class, 'export'])->name('reports.export');
 });
 
 require __DIR__.'/auth.php';

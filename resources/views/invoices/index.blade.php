@@ -7,11 +7,8 @@
         <div class="flex justify-between items-center">
             <div>
                 <h1 class="text-3xl font-bold text-gray-800">Invoices</h1>
-                <p class="text-gray-600 mt-1">Manage all billing and payments</p>
+                <p class="text-gray-600 mt-1">All payment records and receipts</p>
             </div>
-            <a href="{{ route('invoices.create') }}" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition shadow-lg hover:shadow-xl flex items-center">
-                <i class="fas fa-plus mr-2"></i>Create Invoice
-            </a>
         </div>
     </div>
 
@@ -65,6 +62,7 @@
                 <thead class="bg-gray-50">
                 <tr>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Invoice #</th>
+                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Session</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Customer</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Type</th>
                     <th class="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase">Console</th>
@@ -90,21 +88,30 @@
                             </div>
                         </td>
                         <td class="px-6 py-4">
-                            <div class="text-sm font-medium text-gray-900">{{ $invoice->customer_name ?? 'Walk-in Customer' }}</div>
+                            @if($invoice->rentalSession)
+                                <a href="{{ route('rental-sessions.show', $invoice->rentalSession) }}" class="text-indigo-600 hover:underline font-medium">
+                                    Session #{{ $invoice->rentalSession->id }}
+                                </a>
+                            @else
+                                <span class="text-gray-400">-</span>
+                            @endif
                         </td>
                         <td class="px-6 py-4">
-                            @if($invoice->rentalSession && $invoice->order)
+                            <div class="text-sm font-medium text-gray-900">{{ $invoice->customer_name ?? 'Walk-in' }}</div>
+                        </td>
+                        <td class="px-6 py-4">
+                            @if($invoice->console_charges > 0 && $invoice->food_charges > 0)
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                <i class="fas fa-layer-group mr-1"></i>Combined
-                            </span>
-                            @elseif($invoice->rentalSession)
+                                    <i class="fas fa-layer-group mr-1"></i>Console + F&B
+                                </span>
+                            @elseif($invoice->console_charges > 0)
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                <i class="fas fa-gamepad mr-1"></i>Console Only
-                            </span>
+                                    <i class="fas fa-gamepad mr-1"></i>Console Only
+                                </span>
                             @else
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                <i class="fas fa-utensils mr-1"></i>F&B Only
-                            </span>
+                                    <i class="fas fa-utensils mr-1"></i>F&B Only
+                                </span>
                             @endif
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-900">
@@ -123,7 +130,7 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="text-base font-bold text-gray-900">Rp {{ number_format($invoice->total, 0, ',', '.') }}</div>
-                            <div class="text-xs text-gray-500">incl. Rp {{ number_format($invoice->tax, 0, ',', '.') }} tax</div>
+                            <div class="text-xs text-gray-500">+Rp {{ number_format($invoice->tax, 0, ',', '.') }} tax</div>
                         </td>
                         <td class="px-6 py-4 text-sm text-gray-900">
                             {{ $invoice->created_at->format('M d, Y') }}<br>
@@ -132,42 +139,48 @@
                         <td class="px-6 py-4">
                             @if($invoice->payment_status === 'paid')
                                 <div>
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 mb-1">
-                                    <i class="fas fa-check-circle mr-1"></i>PAID
-                                </span>
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800 mb-1">
+                                        <i class="fas fa-check-circle mr-1"></i>PAID
+                                    </span>
                                     <div class="text-xs text-gray-500">
                                         {{ ucfirst($invoice->payment_method) }}
+                                    </div>
+                                    <div class="text-xs text-gray-400">
+                                        {{ $invoice->paid_at->format('M d, H:i') }}
                                     </div>
                                 </div>
                             @else
                                 <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-red-800">
-                                <i class="fas fa-clock mr-1"></i>UNPAID
-                            </span>
+                                    <i class="fas fa-clock mr-1"></i>UNPAID
+                                </span>
                             @endif
                         </td>
                         <td class="px-6 py-4">
-                            <div class="flex space-x-2">
+                            <div class="flex flex-col space-y-2">
                                 <a href="{{ route('invoices.show', $invoice) }}" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm">
-                                    View
+                                    <i class="fas fa-eye mr-1"></i>View
                                 </a>
-                                <a href="{{ route('invoices.pdf', $invoice) }}" class="text-red-600 hover:text-red-900 font-medium text-sm">
-                                    <i class="fas fa-file-pdf"></i>
-                                </a>
+                                @if($invoice->rentalSession)
+                                    <a href="{{ route('rental-sessions.print-receipt', $invoice->rentalSession) }}" class="text-purple-600 hover:text-purple-900 font-medium text-sm">
+                                        <i class="fas fa-print mr-1"></i>Print
+                                    </a>
+                                @elseif($invoice->order)
+                                    <a href="{{ route('orders.print-receipt', $invoice->order) }}" class="text-purple-600 hover:text-purple-900 font-medium text-sm">
+                                        <i class="fas fa-print mr-1"></i>Print
+                                    </a>
+                                @endif
                             </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="9" class="px-6 py-12 text-center">
+                        <td colspan="10" class="px-6 py-12 text-center">
                             <div class="flex flex-col items-center">
                                 <div class="bg-indigo-100 rounded-full w-16 h-16 flex items-center justify-center mb-4">
                                     <i class="fas fa-file-invoice text-3xl text-indigo-600"></i>
                                 </div>
                                 <p class="text-gray-500 text-lg font-medium">No invoices found</p>
-                                <p class="text-gray-400 text-sm mt-1">Create your first invoice</p>
-                                <a href="{{ route('invoices.create') }}" class="mt-4 bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700">
-                                    Create Invoice
-                                </a>
+                                <p class="text-gray-400 text-sm mt-1">Invoices are created automatically when payments are processed</p>
                             </div>
                         </td>
                     </tr>
@@ -181,5 +194,31 @@
                 {{ $invoices->links() }}
             </div>
         @endif
+    </div>
+
+    <!-- Info Box -->
+    <div class="mt-8 bg-blue-50 border-2 border-blue-200 rounded-xl p-6">
+        <h3 class="font-semibold text-blue-900 mb-3 flex items-center">
+            <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+            About Invoices
+        </h3>
+        <ul class="space-y-2 text-sm text-blue-800">
+            <li class="flex items-start">
+                <i class="fas fa-check text-blue-600 mr-2 mt-1"></i>
+                <span>Invoices are automatically generated when payments are processed</span>
+            </li>
+            <li class="flex items-start">
+                <i class="fas fa-check text-blue-600 mr-2 mt-1"></i>
+                <span>Each rental session can have one invoice that includes console and F&B charges</span>
+            </li>
+            <li class="flex items-start">
+                <i class="fas fa-check text-blue-600 mr-2 mt-1"></i>
+                <span>Standalone food orders (without rental session) create separate invoices</span>
+            </li>
+            <li class="flex items-start">
+                <i class="fas fa-check text-blue-600 mr-2 mt-1"></i>
+                <span>All receipts use thermal printer format for easy printing</span>
+            </li>
+        </ul>
     </div>
 @endsection

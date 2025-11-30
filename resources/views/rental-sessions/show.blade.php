@@ -9,19 +9,32 @@
                 <a href="{{ route('rental-sessions.index') }}" class="text-indigo-600 hover:text-indigo-800 font-medium mb-2 inline-block">
                     <i class="fas fa-arrow-left mr-2"></i>Back to Sessions
                 </a>
-                <h1 class="text-3xl font-bold">Rental Session #{{ $rentalSession->id }}</h1>
+                <h1 class="text-3xl font-bold">Session #{{ $rentalSession->id }}</h1>
             </div>
             <div class="flex items-center space-x-3">
-            <span class="px-4 py-2 rounded-lg text-white font-semibold {{ $rentalSession->status === 'active' ? 'bg-green-600' : ($rentalSession->status === 'paused' ? 'bg-yellow-600' : 'bg-gray-600') }}">
-                {{ ucfirst($rentalSession->status) }}
-            </span>
-                <button onclick="printThermalInvoice()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold">
-                    <i class="fas fa-print mr-2"></i>Print Invoice
-                </button>
+                @if($rentalSession->invoice && $rentalSession->invoice->payment_status === 'paid')
+                    <span class="px-4 py-2 rounded-lg text-white font-semibold bg-green-600">
+                        <i class="fas fa-check-circle mr-2"></i>PAID
+                    </span>
+                @elseif($rentalSession->status === 'completed')
+                    <span class="px-4 py-2 rounded-lg text-white font-semibold bg-red-600">
+                        <i class="fas fa-exclamation-circle mr-2"></i>UNPAID
+                    </span>
+                @else
+                    <span class="px-4 py-2 rounded-lg text-white font-semibold {{ $rentalSession->status === 'active' ? 'bg-green-600' : ($rentalSession->status === 'paused' ? 'bg-yellow-600' : 'bg-gray-600') }}">
+                        {{ ucfirst($rentalSession->status) }}
+                    </span>
+                @endif
+
+                @if($rentalSession->status === 'completed')
+                    <a href="{{ route('rental-sessions.print-receipt', $rentalSession) }}" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 font-semibold">
+                        <i class="fas fa-print mr-2"></i>Print Receipt
+                    </a>
+                @endif
             </div>
         </div>
 
-        <!-- Timer Display (Large) -->
+        <!-- Timer Display -->
         @if(in_array($rentalSession->status, ['active', 'paused']))
             <div class="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-2xl p-8 mb-6 text-center">
                 <p class="text-white text-lg mb-2 font-medium">{{ $rentalSession->status === 'paused' ? 'PAUSED' : 'TIME REMAINING' }}</p>
@@ -74,23 +87,19 @@
                             <p class="text-gray-500 text-sm">Package</p>
                             <p class="font-medium">{{ $rentalSession->package->name }}</p>
                         </div>
-                        <div class="flex justify-between">
-                            <p class="text-gray-500 text-sm">Package Duration</p>
-                            <p class="font-medium">{{ $rentalSession->package->duration_minutes }} minutes</p>
-                        </div>
                     @endif
                     <div class="flex justify-between border-t pt-2">
                         <p class="text-gray-500 text-sm">Customer</p>
-                        <p class="font-medium">{{ $rentalSession->customer_name ?? 'Walk-in Customer' }}</p>
+                        <p class="font-medium">{{ $rentalSession->customer_name ?? 'Walk-in' }}</p>
                     </div>
                 </div>
             </div>
 
-            <!-- Time Tracking -->
+            <!-- Time & Cost Tracking -->
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h2 class="text-xl font-semibold mb-4 flex items-center">
                     <i class="fas fa-clock text-indigo-600 mr-2"></i>
-                    Time Tracking
+                    Time & Cost Tracking
                 </h2>
                 <div class="space-y-3">
                     <div class="flex justify-between">
@@ -104,18 +113,8 @@
                         </div>
                     @endif
                     <div class="flex justify-between">
-                        <p class="text-gray-500 text-sm">Total Paused Time</p>
+                        <p class="text-gray-500 text-sm">Paused Time</p>
                         <p class="font-medium">{{ $rentalSession->total_paused_minutes }} minutes</p>
-                    </div>
-                    <div class="flex justify-between border-t pt-2">
-                        <p class="text-gray-500 text-sm">Elapsed Time</p>
-                        <p class="font-medium" id="elapsedTime">
-                            @if($rentalSession->end_time)
-                                {{ $rentalSession->start_time->diffInMinutes($rentalSession->end_time) - $rentalSession->total_paused_minutes }} minutes
-                            @else
-                                {{ $rentalSession->start_time->diffInMinutes(now()) - $rentalSession->total_paused_minutes }} minutes
-                            @endif
-                        </p>
                     </div>
                     @if($currentCost !== null)
                         <div class="flex justify-between border-t pt-2">
@@ -124,7 +123,7 @@
                         </div>
                     @elseif($rentalSession->status === 'completed')
                         <div class="flex justify-between border-t pt-2">
-                            <p class="text-gray-500 text-sm font-semibold">Total Cost</p>
+                            <p class="text-gray-500 text-sm font-semibold">Console Cost</p>
                             <p class="text-2xl font-bold text-green-600">Rp {{ number_format($rentalSession->total_cost, 0, ',', '.') }}</p>
                         </div>
                     @endif
@@ -135,6 +134,7 @@
         <!-- Food Orders -->
         @php
             $foodOrders = \App\Models\Order::where('rental_session_id', $rentalSession->id)->with('items.foodItem')->get();
+            $foodTotal = $foodOrders->sum('total');
         @endphp
         @if($foodOrders->count() > 0)
             <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
@@ -143,12 +143,13 @@
                     Food & Beverage Orders
                 </h2>
                 @foreach($foodOrders as $order)
-                    <div class="border rounded-lg p-4 mb-4">
+                    <div class="border-2 rounded-lg p-4 mb-4 {{ $order->payment_status === 'paid' ? 'border-green-200 bg-green-50' : 'border-gray-200' }}">
                         <div class="flex justify-between items-center mb-3">
                             <h3 class="font-semibold">Order #{{ $order->order_number }}</h3>
                             <span class="text-sm {{ $order->payment_status === 'paid' ? 'text-green-600' : 'text-red-600' }} font-medium">
-                    {{ ucfirst($order->payment_status) }}
-                </span>
+                                <i class="fas {{ $order->payment_status === 'paid' ? 'fa-check-circle' : 'fa-exclamation-circle' }} mr-1"></i>
+                                {{ ucfirst($order->payment_status) }}
+                            </span>
                         </div>
                         <table class="w-full text-sm">
                             <thead class="border-b">
@@ -179,147 +180,170 @@
             </div>
         @endif
 
-        <!-- Actions -->
+        <!-- Total Summary (if completed) -->
+        @if($rentalSession->status === 'completed')
+            <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-2xl p-8 mb-6 text-white">
+                <h2 class="text-2xl font-bold mb-6 text-center">Session Summary</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">
+                        <i class="fas fa-gamepad text-3xl mb-2"></i>
+                        <p class="text-sm opacity-90">Console Charges</p>
+                        <p class="text-2xl font-bold">Rp {{ number_format($rentalSession->total_cost, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">
+                        <i class="fas fa-utensils text-3xl mb-2"></i>
+                        <p class="text-sm opacity-90">F&B Charges</p>
+                        <p class="text-2xl font-bold">Rp {{ number_format($foodTotal, 0, ',', '.') }}</p>
+                    </div>
+                    <div class="bg-white bg-opacity-20 rounded-lg p-4 text-center">
+                        <i class="fas fa-receipt text-3xl mb-2"></i>
+                        <p class="text-sm opacity-90">Total Amount</p>
+                        @php
+                            $subtotal = $rentalSession->total_cost + $foodTotal;
+                            $tax = $subtotal * 0.10;
+                            $grandTotal = $subtotal + $tax;
+                        @endphp
+                        <p class="text-3xl font-bold">Rp {{ number_format($grandTotal, 0, ',', '.') }}</p>
+                        <p class="text-xs opacity-75">(incl. 10% tax)</p>
+                    </div>
+                </div>
+
+                @if(!$rentalSession->invoice || $rentalSession->invoice->payment_status !== 'paid')
+                    <div class="text-center">
+                        <button onclick="document.getElementById('paymentModal').classList.remove('hidden')" class="bg-white text-indigo-600 px-8 py-4 rounded-lg hover:bg-gray-100 font-bold text-lg shadow-lg">
+                            <i class="fas fa-dollar-sign mr-2"></i>Process Payment
+                        </button>
+                    </div>
+                @endif
+            </div>
+    @endif
+
+        <!-- Action Buttons -->
         @if(in_array($rentalSession->status, ['active', 'paused']))
             <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-                <h2 class="text-xl font-semibold mb-4">Actions</h2>
+                <h2 class="text-xl font-semibold mb-4">Session Actions</h2>
                 <div class="flex flex-wrap gap-3">
                     @if($rentalSession->status === 'active')
                         <form method="POST" action="{{ route('rental-sessions.pause', $rentalSession) }}">
                             @csrf
-                            <button type="submit" class="bg-yellow-500 text-white px-6 py-2 rounded-lg hover:bg-yellow-600 font-semibold">
+                            <button type="submit" class="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600 font-semibold shadow-lg">
                                 <i class="fas fa-pause mr-2"></i>Pause Session
                             </button>
                         </form>
                     @else
                         <form method="POST" action="{{ route('rental-sessions.resume', $rentalSession) }}">
                             @csrf
-                            <button type="submit" class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600 font-semibold">
+                            <button type="submit" class="bg-green-500 text-white px-6 py-3 rounded-lg hover:bg-green-600 font-semibold shadow-lg">
                                 <i class="fas fa-play mr-2"></i>Resume Session
                             </button>
                         </form>
                     @endif
 
-                    <button onclick="document.getElementById('extendModal').classList.remove('hidden')" class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 font-semibold">
+                    <button onclick="document.getElementById('extendModal').classList.remove('hidden')" class="bg-blue-500 text-white px-6 py-3 rounded-lg hover:bg-blue-600 font-semibold shadow-lg">
                         <i class="fas fa-clock mr-2"></i>Extend Time
                     </button>
 
-                    <form method="POST" action="{{ route('rental-sessions.end', $rentalSession) }}" onsubmit="return confirm('Are you sure you want to end this session?')">
+                    <form method="POST" action="{{ route('rental-sessions.end', $rentalSession) }}" onsubmit="return confirm('End this session?')">
                         @csrf
-                        <button type="submit" class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600 font-semibold">
+                        <button type="submit" class="bg-red-500 text-white px-6 py-3 rounded-lg hover:bg-red-600 font-semibold shadow-lg">
                             <i class="fas fa-stop mr-2"></i>End Session
                         </button>
                     </form>
 
-                    <a href="{{ route('orders.create', ['session_id' => $rentalSession->id]) }}" class="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 font-semibold">
+                    <a href="{{ route('orders.create', ['session_id' => $rentalSession->id]) }}" class="bg-orange-500 text-white px-6 py-3 rounded-lg hover:bg-orange-600 font-semibold shadow-lg inline-flex items-center">
                         <i class="fas fa-shopping-cart mr-2"></i>Add Food Order
                     </a>
                 </div>
             </div>
         @endif
 
+        <!-- Notes -->
         @if($rentalSession->notes)
             <div class="bg-white rounded-xl shadow-lg p-6">
-                <h2 class="text-xl font-semibold mb-4">Notes</h2>
+                <h2 class="text-xl font-semibold mb-4 flex items-center">
+                    <i class="fas fa-sticky-note text-yellow-500 mr-2"></i>
+                    Notes
+                </h2>
                 <p class="text-gray-700 whitespace-pre-wrap">{{ $rentalSession->notes }}</p>
             </div>
         @endif
     </div>
 
-    <!-- Extend Modal -->
+    <!-- Extend Time Modal -->
     <div id="extendModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 class="text-xl font-semibold mb-4">Extend Session Time</h3>
+        <div class="bg-white rounded-xl p-8 max-w-md w-full mx-4">
+            <h3 class="text-2xl font-bold mb-4">Extend Session Time</h3>
             <form method="POST" action="{{ route('rental-sessions.extend', $rentalSession) }}">
                 @csrf
-                <div class="mb-4">
-                    <label class="block text-gray-700 mb-2 font-medium">Additional Minutes</label>
-                    <input type="number" name="additional_minutes" min="1" class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-indigo-500" required>
+                <div class="mb-6">
+                    <label class="block text-gray-700 mb-2 font-semibold">Additional Minutes</label>
+                    <input type="number" name="additional_minutes" min="1" value="30" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-indigo-500" required>
+                    <p class="text-gray-500 text-sm mt-1">How many minutes to add</p>
                 </div>
                 <div class="flex space-x-3">
-                    <button type="submit" class="flex-1 bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 font-semibold">Extend</button>
-                    <button type="button" onclick="document.getElementById('extendModal').classList.add('hidden')" class="flex-1 bg-gray-300 px-6 py-2 rounded-lg hover:bg-gray-400 font-semibold">Cancel</button>
+                    <button type="submit" class="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-semibold">
+                        <i class="fas fa-plus mr-2"></i>Extend
+                    </button>
+                    <button type="button" onclick="document.getElementById('extendModal').classList.add('hidden')" class="flex-1 bg-gray-300 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-400 font-semibold">
+                        Cancel
+                    </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- Thermal Invoice Template (Hidden) -->
-    <div id="thermalInvoice" style="display: none;">
-        <div style="width: 300px; font-family: monospace; font-size: 12px;">
-            <div style="text-align: center; border-bottom: 1px dashed #000; padding-bottom: 10px; margin-bottom: 10px;">
-                <h2 style="margin: 0; font-size: 18px;">PS RENTAL</h2>
-                <p style="margin: 2px 0; font-size: 10px;">Gaming Center</p>
-                <p style="margin: 2px 0; font-size: 10px;">{{ now()->format('d M Y, H:i:s') }}</p>
-            </div>
-
-            <div style="margin-bottom: 10px;">
-                <p style="margin: 2px 0;"><strong>Session #{{ $rentalSession->id }}</strong></p>
-                <p style="margin: 2px 0;">Customer: {{ $rentalSession->customer_name ?? 'Walk-in' }}</p>
-                <p style="margin: 2px 0;">Cashier: {{ $rentalSession->user->name }}</p>
-            </div>
-
-            <div style="border-top: 1px dashed #000; border-bottom: 1px dashed #000; padding: 10px 0; margin: 10px 0;">
-                <p style="margin: 2px 0;"><strong>CONSOLE RENTAL</strong></p>
-                <p style="margin: 2px 0;">{{ $rentalSession->console->console_number }} - {{ $rentalSession->console->consoleType->name }}</p>
-                <p style="margin: 2px 0;">Start: {{ $rentalSession->start_time->format('H:i') }}</p>
-                @if($rentalSession->end_time)
-                    <p style="margin: 2px 0;">End: {{ $rentalSession->end_time->format('H:i') }}</p>
-                @else
-                    <p style="margin: 2px 0;">Status: ONGOING</p>
-                @endif
-                @if($rentalSession->package)
-                    <p style="margin: 2px 0;">Package: {{ $rentalSession->package->name }}</p>
-                @endif
-                <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-                    <span>Console Charges:</span>
-                    <span>Rp {{ number_format($currentCost ?? $rentalSession->total_cost, 0, ',', '.') }}</span>
+    <!-- Payment Modal -->
+    @if($rentalSession->status === 'completed' && (!$rentalSession->invoice || $rentalSession->invoice->payment_status !== 'paid'))
+        <div id="paymentModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full mx-4">
+                <div class="text-center mb-6">
+                    <div class="bg-green-100 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                        <i class="fas fa-dollar-sign text-4xl text-green-600"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800">Process Payment</h3>
+                    <p class="text-gray-600 mt-2">Total Amount</p>
+                    <p class="text-4xl font-bold text-green-600 mt-2">
+                        Rp {{ number_format($grandTotal ?? 0, 0, ',', '.') }}
+                    </p>
                 </div>
-            </div>
 
-            @if($foodOrders->count() > 0)
-                <div style="margin: 10px 0;">
-                    <p style="margin: 2px 0;"><strong>FOOD & BEVERAGE</strong></p>
-                    @foreach($foodOrders as $order)
-                        @foreach($order->items as $item)
-                            <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                                <span>{{ $item->quantity }}x {{ $item->foodItem->name }}</span>
-                                <span>Rp {{ number_format($item->subtotal, 0, ',', '.') }}</span>
-                            </div>
-                        @endforeach
-                    @endforeach
-                </div>
-            @endif
+                <form method="POST" action="{{ route('rental-sessions.mark-paid', $rentalSession) }}">
+                    @csrf
+                    <div class="mb-6">
+                        <label class="block text-gray-700 font-semibold mb-3">Payment Method</label>
+                        <div class="space-y-3">
+                            <label class="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-green-500 transition">
+                                <input type="radio" name="payment_method" value="cash" required class="w-5 h-5 text-green-600">
+                                <i class="fas fa-money-bill-wave text-green-600 text-2xl mx-3"></i>
+                                <span class="font-medium text-gray-800">Cash</span>
+                            </label>
+                            <label class="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-blue-500 transition">
+                                <input type="radio" name="payment_method" value="card" class="w-5 h-5 text-blue-600">
+                                <i class="fas fa-credit-card text-blue-600 text-2xl mx-3"></i>
+                                <span class="font-medium text-gray-800">Card</span>
+                            </label>
+                            <label class="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition">
+                                <input type="radio" name="payment_method" value="transfer" class="w-5 h-5 text-purple-600">
+                                <i class="fas fa-exchange-alt text-purple-600 text-2xl mx-3"></i>
+                                <span class="font-medium text-gray-800">Bank Transfer</span>
+                            </label>
+                        </div>
+                    </div>
 
-            <div style="border-top: 1px dashed #000; padding-top: 10px; margin-top: 10px;">
-                @php
-                    $foodTotal = $foodOrders->sum('total');
-                    $consoleTotal = $currentCost ?? $rentalSession->total_cost;
-                    $subtotal = $consoleTotal + $foodTotal;
-                    $tax = $subtotal * 0.10;
-                    $grandTotal = $subtotal + $tax;
-                @endphp
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                    <span>Subtotal:</span>
-                    <span>Rp {{ number_format($subtotal, 0, ',', '.') }}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin: 2px 0;">
-                    <span>Tax (10%):</span>
-                    <span>Rp {{ number_format($tax, 0, ',', '.') }}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 16px; font-weight: bold; margin-top: 5px; border-top: 1px solid #000; padding-top: 5px;">
-                    <span>TOTAL:</span>
-                    <span>Rp {{ number_format($grandTotal, 0, ',', '.') }}</span>
-                </div>
-            </div>
-
-            <div style="text-align: center; margin-top: 15px; border-top: 1px dashed #000; padding-top: 10px; font-size: 10px;">
-                <p style="margin: 2px 0;">Thank you for your visit!</p>
-                <p style="margin: 2px 0;">Please come again</p>
+                    <div class="flex space-x-3">
+                        <button type="submit" class="flex-1 bg-green-600 text-white px-6 py-4 rounded-lg hover:bg-green-700 transition font-bold text-lg shadow-lg">
+                            <i class="fas fa-check mr-2"></i>Confirm Payment
+                        </button>
+                        <button type="button" onclick="document.getElementById('paymentModal').classList.add('hidden')" class="flex-1 bg-gray-300 text-gray-700 px-6 py-4 rounded-lg hover:bg-gray-400 transition font-semibold">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </div>
         </div>
-    </div>
+    @endif
 
+    <!-- Audio -->
     <audio id="sessionAlarm" preload="auto">
         <source src="{{ asset('sounds/alarm.mp3') }}" type="audio/mpeg">
     </audio>
@@ -364,7 +388,6 @@
                 }
 
                 updateMainTimerDisplay(remainingSeconds, false);
-                updateElapsedTime(activeSeconds);
             }, 1000);
         }
 
@@ -389,24 +412,6 @@
             } else {
                 timerElement.style.color = '#FFFFFF';
             }
-        }
-
-        function updateElapsedTime(activeSeconds) {
-            const elapsedElement = document.getElementById('elapsedTime');
-            if (!elapsedElement) return;
-
-            const minutes = Math.floor(activeSeconds / 60);
-            const hours = Math.floor(minutes / 60);
-            const mins = minutes % 60;
-
-            let timeString = '';
-            if (hours > 0) {
-                timeString = `${hours} hour${hours > 1 ? 's' : ''} ${mins} minute${mins !== 1 ? 's' : ''}`;
-            } else {
-                timeString = `${mins} minute${mins !== 1 ? 's' : ''}`;
-            }
-
-            elapsedElement.textContent = timeString;
         }
 
         function triggerSessionAlarm(sessionId) {
@@ -437,26 +442,6 @@
             } else {
                 audio.pause();
             }
-        }
-
-        function printThermalInvoice() {
-            const invoiceContent = document.getElementById('thermalInvoice').innerHTML;
-            const printWindow = window.open('', '', 'width=350,height=600');
-            printWindow.document.write('<html><head><title>Print Invoice</title>');
-            printWindow.document.write('<style>');
-            printWindow.document.write('@page { size: 80mm auto; margin: 0; }');
-            printWindow.document.write('body { margin: 10mm; font-family: monospace; font-size: 12px; }');
-            printWindow.document.write('</style>');
-            printWindow.document.write('</head><body>');
-            printWindow.document.write(invoiceContent);
-            printWindow.document.write('</body></html>');
-            printWindow.document.close();
-            printWindow.focus();
-
-            setTimeout(() => {
-                printWindow.print();
-                printWindow.close();
-            }, 250);
         }
 
         document.addEventListener('DOMContentLoaded', () => {
