@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\RentalSession;
 use App\Models\Console;
 use App\Models\Package;
@@ -29,8 +30,9 @@ class RentalSessionController extends Controller
             ->where('status', 'available')
             ->get();
         $packages = Package::where('is_active', true)->get();
+        $customers = Customer::where('is_active', true)->orderBy('name')->get();
 
-        return view('rental-sessions.create', compact('consoles', 'packages'));
+        return view('rental-sessions.create', compact('consoles', 'packages', 'customers'));
     }
 
     public function store(Request $request)
