@@ -22,7 +22,7 @@
             <div class="border-b pb-6 mb-6">
                 <div class="flex justify-between">
                     <div>
-                        <h2 class="text-2xl font-bold text-indigo-600">PS Rental</h2>
+                        <h2 class="text-2xl font-bold text-indigo-600">The Room PlayStation</h2>
                         <p class="text-gray-600">Gaming Center</p>
                     </div>
                     <div class="text-right">
@@ -135,7 +135,7 @@
                     <select name="payment_method" required class="w-full border rounded px-3 py-2">
                         <option value="cash">Cash</option>
                         <option value="card">Card</option>
-                        <option value="transfer">Bank Transfer</option>
+                        <option value="transfer">Bank Transfer/QRIS</option>
                     </select>
                 </div>
                 <div class="flex space-x-3">

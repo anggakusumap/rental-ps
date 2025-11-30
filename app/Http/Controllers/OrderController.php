@@ -18,15 +18,18 @@ class OrderController extends Controller
         private InvoiceService $invoiceService
     ) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        // Default = today
+        $date = $request->input('date', now()->toDateString());
+
         $orders = Order::with(['user', 'rentalSession', 'customer'])
+            ->whereDate('created_at', $date)
             ->latest()
             ->paginate(20);
 
-        return view('orders.index', compact('orders'));
+        return view('orders.index', compact('orders', 'date'));
     }
-
     public function create(Request $request)
     {
         $sessionId = $request->query('session_id');

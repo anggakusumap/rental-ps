@@ -302,7 +302,7 @@
                             <label class="flex items-center p-4 border-2 border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition">
                                 <input type="radio" name="payment_method" value="transfer" class="w-5 h-5 text-purple-600">
                                 <i class="fas fa-exchange-alt text-purple-600 text-xl mx-3"></i>
-                                <span class="font-medium text-gray-800">Bank Transfer</span>
+                                <span class="font-medium text-gray-800">Bank Transfer/QRIS</span>
                             </label>
                         </div>
                     </div>

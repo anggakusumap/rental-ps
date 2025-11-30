@@ -104,7 +104,7 @@
 <body>
 <div class="header">
     <div class="company-info">
-        <h1>PS Rental</h1>
+        <h1>The Room PlayStation</h1>
         <p>Gaming Center</p>
         <p>Address Line 1</p>
         <p>City, State 12345</p>

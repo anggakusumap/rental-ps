@@ -18,13 +18,17 @@ class RentalSessionController extends Controller
     ) {
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        // Default date = today
+        $date = $request->input('date', now()->toDateString());
+
         $sessions = RentalSession::with(['console.consoleType', 'package', 'user'])
+            ->whereDate('created_at', $date)
             ->latest()
             ->paginate(20);
 
-        return view('rental-sessions.index', compact('sessions'));
+        return view('rental-sessions.index', compact('sessions', 'date'));
     }
 
     public function create()
