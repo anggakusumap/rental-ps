@@ -1,6 +1,6 @@
 <?php
 
-amespace Database\Factories;
+namespace Database\Factories;
 
 use App\Models\User;
 use App\Models\RentalSession;

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('console_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('package_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('customer_id')->nullable()->constrained()->nullOnDelete();
+            // Remove customer_id foreign key from here - it will be added later
             $table->string('customer_name')->nullable();
             $table->datetime('start_time');
             $table->datetime('end_time')->nullable();
