@@ -57,7 +57,7 @@
                 <!-- Customer Selection -->
                 <div class="mb-6">
                     <label class="block text-gray-700 font-semibold mb-2">
-                        Customer
+                        Customer (Optional)
                     </label>
                     <select name="customer_id" id="customerSelect" class="w-full border-2 border-gray-300 rounded-lg px-4 py-3 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition mb-3">
                         <option value="">Walk-in Customer</option>
@@ -67,7 +67,12 @@
                             </option>
                         @endforeach
                     </select>
+                </div>
 
+                <div class="mb-6">
+                    <label class="block text-gray-700 font-semibold mb-2">
+                        Walk-in Name (Optional)
+                    </label>
                     <div id="walkInNameField" class="{{ old('customer_id') ? 'hidden' : '' }}">
                         <input
                             type="text"
@@ -150,6 +155,14 @@
                 walkInField.classList.add('hidden');
                 nameInput.value = '';
             }
+        });
+
+        $(document).ready(function () {
+            $('#customerSelect').select2({
+                placeholder: "Search customer...",
+                allowClear: true,
+                width: '100%'
+            });
         });
     </script>
 @endsection

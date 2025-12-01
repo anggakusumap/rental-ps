@@ -144,7 +144,7 @@
                         </div>
 
                         <!-- Order Summary -->
-                        <div class="border-t-2 border-gray-200 pt-4 space-y-3">
+                        <div class="pt-4 space-y-3">
                             <div class="flex justify-between text-xl font-bold text-gray-900 border-t-2 border-gray-300 pt-3">
                                 <span>Total:</span>
                                 <span class="text-indigo-600" id="total">Rp 0</span>
@@ -303,6 +303,14 @@
                 e.preventDefault();
                 alert('Please add items to the cart before creating an order');
             }
+        });
+
+        $(document).ready(function () {
+            $('#customerSelect').select2({
+                placeholder: "Search customer...",
+                allowClear: true,
+                width: '100%'
+            });
         });
     </script>
 @endsection

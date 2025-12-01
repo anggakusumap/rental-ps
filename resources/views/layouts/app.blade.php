@@ -6,6 +6,35 @@
     <title>@yield('title', 'The Room PlayStation Management')</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- jQuery (required for Select2) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <style>
+        /* Make Select2 match Tailwind input styling */
+        .select2-container .select2-selection--single {
+            height: 42px !important;
+            border: 2px solid #d1d5db !important; /* Tailwind gray-300 */
+            border-radius: 0.5rem !important;     /* Tailwind rounded-lg */
+            padding: 6px 12px !important;
+        }
+
+        .select2-container .select2-selection__arrow {
+            height: 42px !important;
+            right: 10px !important;
+        }
+
+        .select2-container--default .select2-results__option--highlighted {
+            background-color: #4f46e5 !important;  /* Tailwind indigo-600 */
+            color: white !important;
+        }
+    </style>
 </head>
 <body class="bg-gray-100">
     @auth
