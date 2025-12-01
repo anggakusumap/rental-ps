@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\DB;
 
 class InvoiceService
 {
-    private const TAX_RATE = 0.10;
-
     /**
      * Create combined invoice (console + food orders linked to session)
      */
@@ -29,13 +27,13 @@ class InvoiceService
             $foodCharges = $foodOrders->sum('total');
 
             $subtotal = $consoleCharges + $foodCharges;
-            $tax = $subtotal * self::TAX_RATE;
-            $total = $subtotal + $tax;
+            $tax = 0; // No tax
+            $total = $subtotal;
 
             $invoice = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
                 'rental_session_id' => $session->id,
-                'order_id' => null, // Combined invoices link to session, not individual order
+                'order_id' => null,
                 'user_id' => auth()->id(),
                 'customer_name' => $session->customer_name,
                 'console_charges' => $consoleCharges,
@@ -56,15 +54,14 @@ class InvoiceService
     public function createConsoleInvoice(RentalSession $session): Invoice
     {
         return DB::transaction(function () use ($session) {
-            // Check if invoice already exists
             if ($session->invoice) {
                 return $session->invoice;
             }
 
             $consoleCharges = $session->total_cost;
             $subtotal = $consoleCharges;
-            $tax = $subtotal * self::TAX_RATE;
-            $total = $subtotal + $tax;
+            $tax = 0; // No tax
+            $total = $subtotal;
 
             $invoice = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
@@ -85,12 +82,11 @@ class InvoiceService
     }
 
     /**
-     * Create invoice for food only (standalone order or specific order)
+     * Create invoice for food only
      */
     public function createFoodInvoice(Order $order): Invoice
     {
         return DB::transaction(function () use ($order) {
-            // Check if invoice already exists for this order
             $existingInvoice = Invoice::where('order_id', $order->id)->first();
             if ($existingInvoice) {
                 return $existingInvoice;
@@ -98,12 +94,12 @@ class InvoiceService
 
             $foodCharges = $order->total;
             $subtotal = $order->subtotal;
-            $tax = $order->tax;
-            $total = $foodCharges;
+            $tax = 0; // No tax
+            $total = $subtotal;
 
             $invoice = Invoice::create([
                 'invoice_number' => $this->generateInvoiceNumber(),
-                'rental_session_id' => $order->rental_session_id, // Can be null for standalone orders
+                'rental_session_id' => $order->rental_session_id,
                 'order_id' => $order->id,
                 'user_id' => auth()->id(),
                 'customer_name' => $order->customer_name,
@@ -119,27 +115,16 @@ class InvoiceService
         });
     }
 
-    /**
-     * Create invoice for a rental session (includes all linked food orders)
-     * Alias for createCombinedInvoice for backward compatibility
-     */
     public function createSessionInvoice(RentalSession $session): Invoice
     {
         return $this->createCombinedInvoice($session);
     }
 
-    /**
-     * Create invoice for standalone food order (not linked to session)
-     * Alias for createFoodInvoice for backward compatibility
-     */
     public function createFoodOnlyInvoice(Order $order): Invoice
     {
         return $this->createFoodInvoice($order);
     }
 
-    /**
-     * Mark invoice as paid and update related records
-     */
     public function markAsPaid(Invoice $invoice, string $paymentMethod): Invoice
     {
         return DB::transaction(function () use ($invoice, $paymentMethod) {
@@ -149,7 +134,6 @@ class InvoiceService
                 'paid_at' => now(),
             ]);
 
-            // Update rental session if exists
             if ($invoice->rentalSession) {
                 $invoice->rentalSession->update([
                     'payment_status' => 'paid',
@@ -158,7 +142,6 @@ class InvoiceService
                 ]);
             }
 
-            // Update all linked orders (for combined invoices)
             if ($invoice->rentalSession) {
                 Order::where('rental_session_id', $invoice->rentalSession->id)
                     ->update([
@@ -168,7 +151,6 @@ class InvoiceService
                     ]);
             }
 
-            // Update standalone order if exists
             if ($invoice->order) {
                 $invoice->order->update([
                     'payment_status' => 'paid',
@@ -181,9 +163,6 @@ class InvoiceService
         });
     }
 
-    /**
-     * Generate unique invoice number
-     */
     private function generateInvoiceNumber(): string
     {
         return 'INV-' . now()->format('Ymd') . '-' . strtoupper(substr(uniqid(), -6));

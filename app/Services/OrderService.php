@@ -9,8 +9,6 @@ use Illuminate\Support\Facades\DB;
 
 class OrderService
 {
-    private const TAX_RATE = 0.10; // 10% tax
-
     public function createOrder(array $data): Order
     {
         return DB::transaction(function () use ($data) {
@@ -20,7 +18,6 @@ class OrderService
                 'customer_name' => null,
             ];
 
-            // If customer_id is provided, get customer name from database
             if (!empty($data['customer_id'])) {
                 $customer = Customer::find($data['customer_id']);
                 if ($customer) {
@@ -28,7 +25,6 @@ class OrderService
                     $customerData['customer_name'] = $customer->name;
                 }
             } else {
-                // Use provided walk-in customer name
                 $customerData['customer_name'] = $data['customer_name'] ?? null;
             }
 
@@ -65,8 +61,8 @@ class OrderService
                 $subtotal += $itemSubtotal;
             }
 
-            $tax = $subtotal * self::TAX_RATE;
-            $total = $subtotal + $tax;
+            $tax = 0; // No tax
+            $total = $subtotal;
 
             $order->update([
                 'subtotal' => $subtotal,

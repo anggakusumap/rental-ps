@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Receipt #{{ $order->id }}</title>
+    <title>Receipt Order #{{ $order->order_number }}</title>
     <style>
         * {
             margin: 0;
@@ -11,66 +11,63 @@
         }
         body {
             font-family: 'Courier New', Courier, monospace;
-            font-size: 11px;
-            width: 80mm;
-            padding: 4mm;
+            font-size: 10px;
+            width: 58mm;
+            padding: 2mm;
         }
         .center { text-align: center; }
         .bold { font-weight: bold; }
-
         .line {
             border-top: 1px dashed #000;
-            margin: 6px 0;
+            margin: 3px 0;
         }
         .double-line {
             border-top: 2px solid #000;
-            margin: 6px 0;
+            margin: 4px 0;
         }
-
         .row {
             display: flex;
             justify-content: space-between;
-            margin: 2px 0;
+            margin: 1px 0;
         }
-
         .header h1 {
-            font-size: 18px;
+            font-size: 14px;
             margin-bottom: 2px;
         }
         .header p {
-            font-size: 10px;
-            margin: 1px 0;
+            font-size: 9px;
+            margin: 0;
         }
-
         .section-title {
-            margin-top: 6px;
-            margin-bottom: 4px;
+            margin-top: 4px;
+            margin-bottom: 2px;
             font-weight: bold;
-            font-size: 12px;
+            font-size: 11px;
         }
-
         .item-row {
             margin: 2px 0;
         }
         .qty {
             display: inline-block;
-            width: 24px;
+            width: 20px;
             text-align: left;
         }
         .price-note {
-            font-size: 9px;
+            font-size: 8px;
             color: #666;
-            margin-left: 32px;
+            margin-left: 24px;
         }
-
         .grand-total {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
         }
-
+        .footer {
+            font-size: 9px;
+            margin-top: 6px;
+        }
         @media print {
             @page {
-                size: 80mm auto;
+                size: 58mm auto;
                 margin: 0;
             }
         }
@@ -88,90 +85,55 @@
 
 <div class="double-line"></div>
 
-<!-- Session Info -->
+<!-- Order Info -->
 <div class="center">
-    <p class="bold">SESSION #{{ $order->id }}</p>
-    <p>{{ now()->format('d M Y, H:i:s') }}</p>
+    <p class="bold">ORDER #{{ $order->order_number }}</p>
+    <p style="font-size: 9px;">{{ $order->created_at->format('d M Y, H:i') }}</p>
 </div>
 
 <div class="line"></div>
 
 <!-- Customer & Staff -->
-<p>Customer: {{ $order->customer_name ?? 'Walk-in' }}</p>
-<p>Cashier: {{ $order->user->name }}</p>
+<p style="font-size: 9px;">Customer: {{ $order->customer_name ?? 'Walk-in' }}</p>
+<p style="font-size: 9px;">Cashier: {{ $order->user->name }}</p>
 
 <div class="double-line"></div>
 
 <!-- FOOD & BEVERAGE -->
-@php $foodTotal = 0; @endphp
+<p class="section-title">FOOD & BEVERAGE</p>
 
-@if($foodOrders->count() > 0)
-    <p class="section-title">FOOD & BEVERAGE</p>
-
-    @foreach($foodOrders as $foodOrder)
-        @foreach($foodOrder->items as $item)
-
-            <div class="item-row">
-                <div class="row">
-                        <span>
-                            <span class="qty">{{ $item->quantity }}x</span>
-                            {{ $item->foodItem->name }}
-                        </span>
-                    <span>{{ number_format($item->subtotal, 0, ',', '.') }}</span>
-                </div>
-                <div class="price-note">
-                    @ Rp {{ number_format($item->price, 0, ',', '.') }}
-                </div>
-            </div>
-
-            @php $foodTotal += $item->subtotal; @endphp
-
-        @endforeach
-    @endforeach
-
-    <div class="line"></div>
-
-    <div class="row bold">
-        <span>F&B Total:</span>
-        <span>Rp {{ number_format($foodTotal, 0, ',', '.') }}</span>
+@foreach($order->items as $item)
+    <div class="item-row">
+        <div class="row" style="font-size: 9px;">
+            <span>
+                <span class="qty">{{ $item->quantity }}x</span>
+                {{ $item->foodItem->name }}
+            </span>
+            <span>{{ number_format($item->subtotal, 0, ',', '.') }}</span>
+        </div>
+        <div class="price-note">
+            @ {{ number_format($item->price, 0, ',', '.') }}
+        </div>
     </div>
-@endif
+@endforeach
 
 <!-- Totals -->
 <div class="double-line"></div>
 
-@php
-    $subtotal = $order->total_cost + $foodTotal;
-    $tax = $subtotal * 0.10;
-    $grandTotal = $subtotal + $tax;
-@endphp
-
-<div class="row">
-    <span>Subtotal:</span>
-    <span>Rp {{ number_format($subtotal, 0, ',', '.') }}</span>
-</div>
-
-<div class="row">
-    <span>Tax (10%):</span>
-    <span>Rp {{ number_format($tax, 0, ',', '.') }}</span>
-</div>
-
-<div class="double-line"></div>
-
 <div class="row grand-total">
     <span>TOTAL:</span>
-    <span>Rp {{ number_format($grandTotal, 0, ',', '.') }}</span>
+    <span>Rp {{ number_format($order->total, 0, ',', '.') }}</span>
 </div>
 
 <!-- Payment Status -->
 <div class="double-line"></div>
 
-@if($order->invoice && $order->invoice->payment_status === 'paid')
+@if($order->payment_status === 'paid')
     <div class="center bold">
-        PAID - {{ strtoupper($order->invoice->payment_method) }}
+        PAID - {{ strtoupper($order->payment_method) }}
     </div>
-    <div class="center" style="font-size: 10px;">
-        {{ $order->invoice->paid_at->format('d M Y, H:i') }}
+    <div class="center" style="font-size: 8px;">
+        {{ $order->updated_at->format('d M Y, H:i') }}
     </div>
 @else
     <div class="center bold">PAYMENT PENDING</div>
@@ -180,10 +142,9 @@
 <!-- Footer -->
 <div class="double-line"></div>
 
-<div class="footer center" style="font-size: 10px;">
+<div class="footer center">
     <p>Thank you for your visit!</p>
     <p>Please come again</p>
-    <p style="margin-top: 6px;">www.psrental.com</p>
 </div>
 
 </body>

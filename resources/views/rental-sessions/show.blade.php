@@ -181,6 +181,7 @@
         @endif
 
         <!-- Total Summary (if completed) -->
+        <!-- Update the Total Summary section -->
         @if($rentalSession->status === 'completed')
             <div class="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-2xl p-8 mb-6 text-white">
                 <h2 class="text-2xl font-bold mb-6 text-center">Session Summary</h2>
@@ -199,12 +200,9 @@
                         <i class="fas fa-receipt text-3xl mb-2"></i>
                         <p class="text-sm opacity-90">Total Amount</p>
                         @php
-                            $subtotal = $rentalSession->total_cost + $foodTotal;
-                            $tax = $subtotal * 0.10;
-                            $grandTotal = $subtotal + $tax;
+                            $grandTotal = $rentalSession->total_cost + $foodTotal;
                         @endphp
                         <p class="text-3xl font-bold">Rp {{ number_format($grandTotal, 0, ',', '.') }}</p>
-                        <p class="text-xs opacity-75">(incl. 10% tax)</p>
                     </div>
                 </div>
 
@@ -216,7 +214,7 @@
                     </div>
                 @endif
             </div>
-    @endif
+        @endif
 
         <!-- Action Buttons -->
         @if(in_array($rentalSession->status, ['active', 'paused']))

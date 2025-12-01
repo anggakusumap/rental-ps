@@ -145,14 +145,6 @@
 
                         <!-- Order Summary -->
                         <div class="border-t-2 border-gray-200 pt-4 space-y-3">
-                            <div class="flex justify-between text-gray-700">
-                                <span>Subtotal:</span>
-                                <span class="font-semibold" id="subtotal">Rp 0</span>
-                            </div>
-                            <div class="flex justify-between text-gray-700">
-                                <span>Tax (10%):</span>
-                                <span class="font-semibold" id="tax">Rp 0</span>
-                            </div>
                             <div class="flex justify-between text-xl font-bold text-gray-900 border-t-2 border-gray-300 pt-3">
                                 <span>Total:</span>
                                 <span class="text-indigo-600" id="total">Rp 0</span>
@@ -297,18 +289,13 @@
         }
 
         function updateTotals() {
-            let subtotal = 0;
+            let total = 0;
 
             Object.values(cart).forEach(item => {
-                subtotal += item.price * item.quantity;
+                total += item.price * item.quantity;
             });
 
-            const tax = subtotal * 0.10;
-            const total = subtotal + tax;
-
-            document.getElementById('subtotal').textContent = 'Rp ' + subtotal.toLocaleString('id-ID');
-            document.getElementById('tax').textContent = 'Rp ' + Math.round(tax).toLocaleString('id-ID');
-            document.getElementById('total').textContent = 'Rp ' + Math.round(total).toLocaleString('id-ID');
+            document.getElementById('total').textContent = 'Rp ' + total.toLocaleString('id-ID');
         }
 
         document.getElementById('orderForm').addEventListener('submit', function(e) {
