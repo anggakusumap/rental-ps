@@ -85,11 +85,15 @@ class OrderController extends Controller
         ]);
 
         try {
-            // If linked to rental session, update session invoice
+            // If linked to rental session and session is completed
             if ($order->rental_session_id) {
                 $session = RentalSession::find($order->rental_session_id);
+
                 if ($session && $session->status === 'completed') {
-                    $invoice = $this->invoiceService->createSessionInvoice($session);
+                    // Create or get existing invoice for the session
+                    $invoice = $session->invoice ?? $this->invoiceService->createSessionInvoice($session);
+
+                    // Mark invoice as paid
                     $this->invoiceService->markAsPaid($invoice, $validated['payment_method']);
                 } else {
                     // Session not completed yet, just mark order as paid
@@ -100,8 +104,10 @@ class OrderController extends Controller
                     ]);
                 }
             } else {
-                // Standalone order, create separate invoice
-                $invoice = $this->invoiceService->createFoodOnlyInvoice($order);
+                // Standalone order - create invoice automatically
+                $invoice = $this->invoiceService->createFoodInvoice($order);
+
+                // Mark invoice as paid
                 $this->invoiceService->markAsPaid($invoice, $validated['payment_method']);
             }
 
@@ -116,7 +122,6 @@ class OrderController extends Controller
     {
         $order->load(['items.foodItem', 'user', 'customer', 'invoice']);
 
-        // Filter only items that belong to food & beverage
         $foodOrders = collect([$order]);
 
         $pdf = Pdf::loadView('orders.thermal-receipt', [

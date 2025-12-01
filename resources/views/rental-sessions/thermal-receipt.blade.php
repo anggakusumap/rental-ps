@@ -175,7 +175,7 @@
 
 @if($rentalSession->payment_status === 'paid')
     <div class="center bold">
-        PAID - {{ strtoupper($rentalSession->payment_method) }}
+        PAID - {{ strtoupper($rentalSession->payment_method) }}{{ strtolower($rentalSession->payment_method) === 'transfer' ? '/QRIS' : '' }}
     </div>
     <div class="center" style="font-size: 8px;">
         {{ $rentalSession->paid_at->format('d M Y, H:i') }}

@@ -1,4 +1,3 @@
-{{-- resources/views/orders/show.blade.php --}}
 @extends('layouts.app')
 
 @section('title', 'Order Details')
@@ -20,10 +19,11 @@
                         <button onclick="document.getElementById('paymentModal').classList.remove('hidden')" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold shadow-lg">
                             <i class="fas fa-check mr-2"></i>Mark as Paid
                         </button>
+                    @else
+                        <a href="{{ route('orders.print-receipt', $order) }}" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-semibold shadow-lg">
+                            <i class="fas fa-print mr-2"></i>Print Receipt
+                        </a>
                     @endif
-                    <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold shadow-lg">
-                        <i class="fas fa-file-invoice mr-2"></i>Generate Invoice
-                    </a>
                 </div>
             </div>
         </div>
@@ -61,7 +61,7 @@
                     {{ ucfirst($order->payment_status) }}
                 </p>
                 @if($order->payment_method)
-                    <p class="text-sm text-gray-500 mt-1">via {{ ucfirst($order->payment_method) }}</p>
+                    <p class="text-sm text-gray-500 mt-1">via {{ ucfirst($order->payment_method) }}{{ strtolower($order->payment_method) === 'transfer' ? '/QRIS' : '' }}</p>
                 @endif
             </div>
 
@@ -72,7 +72,6 @@
                     <i class="fas fa-money-bill-wave text-2xl text-white opacity-50"></i>
                 </div>
                 <p class="text-3xl font-bold">Rp {{ number_format($order->total, 0, ',', '.') }}</p>
-                <p class="text-sm text-indigo-100 mt-1">incl. Rp {{ number_format($order->tax, 0, ',', '.') }} tax</p>
             </div>
         </div>
 
@@ -156,9 +155,9 @@
                             <div class="bg-green-500 rounded-lg p-2 mr-3">
                                 <i class="fas fa-receipt text-white"></i>
                             </div>
-                            <span class="text-gray-700 font-medium">Subtotal</span>
+                            <span class="text-gray-700 font-medium">Amount</span>
                         </div>
-                        <span class="text-xl font-bold text-green-600">Rp {{ number_format($order->subtotal, 0, ',', '.') }}</span>
+                        <span class="text-xl font-bold text-green-600">Rp {{ number_format($order->total, 0, ',', '.') }}</span>
                     </div>
                 </div>
             </div>
@@ -219,17 +218,9 @@
             </div>
 
             <!-- Order Totals -->
-            <div class="bg-gray-50 px-6 py-6 border-t-2 border-gray-200">
+            <div class="bg-gray-50 px-6 py-6">
                 <div class="flex justify-end">
                     <div class="w-80">
-                        <div class="flex justify-between py-2 text-gray-700">
-                            <span class="font-medium">Subtotal:</span>
-                            <span class="font-semibold">Rp {{ number_format($order->subtotal, 0, ',', '.') }}</span>
-                        </div>
-                        <div class="flex justify-between py-2 text-gray-700">
-                            <span class="font-medium">Tax (10%):</span>
-                            <span class="font-semibold">Rp {{ number_format($order->tax, 0, ',', '.') }}</span>
-                        </div>
                         <div class="flex justify-between py-3 text-xl font-bold border-t-2 border-gray-300">
                             <span>Total:</span>
                             <span class="text-indigo-600">Rp {{ number_format($order->total, 0, ',', '.') }}</span>
@@ -241,7 +232,7 @@
                                     <i class="fas fa-check-circle mr-2 text-xl"></i>
                                     PAYMENT RECEIVED
                                 </p>
-                                <p class="text-sm text-green-700 mt-1">{{ ucfirst($order->payment_method) }}</p>
+                                <p class="text-sm text-green-700 mt-1">{{ ucfirst($order->payment_method) }}{{ strtolower($order->payment_method) === 'transfer' ? '/QRIS' : '' }}</p>
                             </div>
                         @else
                             <div class="mt-4 p-4 bg-red-100 border-2 border-red-300 rounded-lg text-center">
@@ -253,21 +244,6 @@
                         @endif
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex justify-between items-center">
-            <a href="{{ route('orders.index') }}" class="text-gray-600 hover:text-gray-800 font-medium">
-                <i class="fas fa-arrow-left mr-2"></i>Back to Orders
-            </a>
-            <div class="flex space-x-3">
-                <button onclick="window.print()" class="bg-gray-600 text-white px-6 py-3 rounded-lg hover:bg-gray-700 transition font-semibold">
-                    <i class="fas fa-print mr-2"></i>Print
-                </button>
-                <a href="{{ route('invoices.create', ['order_id' => $order->id]) }}" class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition font-semibold">
-                    <i class="fas fa-file-invoice mr-2"></i>Generate Invoice
-                </a>
             </div>
         </div>
     </div>
@@ -282,6 +258,7 @@
                     </div>
                     <h3 class="text-2xl font-bold text-gray-800">Mark as Paid</h3>
                     <p class="text-gray-600 mt-2">Confirm payment for this order</p>
+                    <p class="text-3xl font-bold text-green-600 mt-3">Rp {{ number_format($order->total, 0, ',', '.') }}</p>
                 </div>
 
                 <form method="POST" action="{{ route('orders.mark-paid', $order->id) }}">
@@ -304,13 +281,6 @@
                                 <i class="fas fa-exchange-alt text-purple-600 text-xl mx-3"></i>
                                 <span class="font-medium text-gray-800">Bank Transfer/QRIS</span>
                             </label>
-                        </div>
-                    </div>
-
-                    <div class="bg-gray-50 rounded-lg p-4 mb-6">
-                        <div class="flex justify-between items-center">
-                            <span class="text-gray-600 font-medium">Amount to Receive:</span>
-                            <span class="text-2xl font-bold text-green-600">Rp {{ number_format($order->total, 0, ',', '.') }}</span>
                         </div>
                     </div>
 

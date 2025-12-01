@@ -130,7 +130,7 @@
 
 @if($order->payment_status === 'paid')
     <div class="center bold">
-        PAID - {{ strtoupper($order->payment_method) }}
+        PAID - {{ strtoupper($order->payment_method) }}{{ strtolower($order->payment_method) === 'transfer' ? '/QRIS' : '' }}
     </div>
     <div class="center" style="font-size: 8px;">
         {{ $order->updated_at->format('d M Y, H:i') }}
