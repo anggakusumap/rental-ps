@@ -12,43 +12,66 @@
         </div>
     </div>
 
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+        <form method="GET" class="flex flex-wrap gap-4 items-end">
+            <div class="flex-1 min-w-[200px]">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Filter Date</label>
+                <input
+                    type="date"
+                    name="date"
+                    value="{{ $date }}"
+                    class="w-full border-2 border-gray-300 rounded-lg px-4 py-2 focus:border-indigo-500 focus:ring focus:ring-indigo-200 transition"
+                >
+            </div>
+
+            <button type="submit"
+                    class="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition font-medium">
+                <i class="fas fa-filter mr-2"></i>Apply Filter
+            </button>
+        </form>
+    </div>
+
     <!-- Stats -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-blue-100 text-sm font-medium">Total Invoices</p>
-                    <p class="text-3xl font-bold mt-2">{{ $invoices->total() }}</p>
+                    <p class="text-blue-100 text-sm font-medium">Console Only</p>
+                    <p class="text-3xl font-bold mt-2">{{ $stats['consoleOnly'] }}</p>
+                    <p class="text-blue-100 text-xs mt-1">Rp {{ number_format($stats['consoleOnlyRevenue'], 0, ',', '.') }}</p>
                 </div>
-                <i class="fas fa-file-invoice text-4xl opacity-50"></i>
+                <i class="fas fa-gamepad text-4xl opacity-50"></i>
             </div>
         </div>
 
-        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+        <div class="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-green-100 text-sm font-medium">Paid</p>
-                    <p class="text-3xl font-bold mt-2">{{ $invoices->where('payment_status', 'paid')->count() }}</p>
+                    <p class="text-orange-100 text-sm font-medium">F&B Only</p>
+                    <p class="text-3xl font-bold mt-2">{{ $stats['foodOnly'] }}</p>
+                    <p class="text-orange-100 text-xs mt-1">Rp {{ number_format($stats['foodOnlyRevenue'], 0, ',', '.') }}</p>
                 </div>
-                <i class="fas fa-check-circle text-4xl opacity-50"></i>
-            </div>
-        </div>
-
-        <div class="bg-gradient-to-br from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-red-100 text-sm font-medium">Unpaid</p>
-                    <p class="text-3xl font-bold mt-2">{{ $invoices->where('payment_status', 'unpaid')->count() }}</p>
-                </div>
-                <i class="fas fa-exclamation-circle text-4xl opacity-50"></i>
+                <i class="fas fa-utensils text-4xl opacity-50"></i>
             </div>
         </div>
 
         <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg p-6 text-white">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-purple-100 text-sm font-medium">Total Revenue</p>
-                    <p class="text-2xl font-bold mt-2">Rp {{ number_format($invoices->where('payment_status', 'paid')->sum('total'), 0, ',', '.') }}</p>
+                    <p class="text-purple-100 text-sm font-medium">Console + F&B</p>
+                    <p class="text-3xl font-bold mt-2">{{ $stats['combined'] }}</p>
+                    <p class="text-purple-100 text-xs mt-1">Rp {{ number_format($stats['combinedRevenue'], 0, ',', '.') }}</p>
+                </div>
+                <i class="fas fa-layer-group text-4xl opacity-50"></i>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl shadow-lg p-6 text-white">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-green-100 text-sm font-medium">Total Revenue</p>
+                    <p class="text-2xl font-bold mt-2">Rp {{ number_format($stats['totalRevenue'], 0, ',', '.') }}</p>
+                    <p class="text-green-100 text-xs mt-1">{{ $stats['totalInvoices'] }} invoices</p>
                 </div>
                 <i class="fas fa-money-bill-wave text-4xl opacity-50"></i>
             </div>
@@ -157,9 +180,6 @@
                         </td>
                         <td class="px-6 py-4">
                             <div class="flex flex-col space-y-2">
-                                <a href="{{ route('invoices.show', $invoice) }}" class="text-indigo-600 hover:text-indigo-900 font-medium text-sm">
-                                    <i class="fas fa-eye mr-1"></i>View
-                                </a>
                                 @if($invoice->rentalSession)
                                     <a href="{{ route('rental-sessions.print-receipt', $invoice->rentalSession) }}" class="text-purple-600 hover:text-purple-900 font-medium text-sm">
                                         <i class="fas fa-print mr-1"></i>Print

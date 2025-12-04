@@ -15,11 +15,11 @@
                     <p class="text-gray-600 mt-1">{{ $order->order_number }}</p>
                 </div>
                 <div class="flex space-x-3">
-                    @if($order->payment_status === 'unpaid')
+                    @if($order->payment_status === 'unpaid' && !$order->rentalSession)
                         <button onclick="document.getElementById('paymentModal').classList.remove('hidden')" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 transition font-semibold shadow-lg">
                             <i class="fas fa-check mr-2"></i>Mark as Paid
                         </button>
-                    @else
+                    @elseif($order->payment_status === 'paid')
                         <a href="{{ route('orders.print-receipt', $order) }}" class="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition font-semibold shadow-lg">
                             <i class="fas fa-print mr-2"></i>Print Receipt
                         </a>

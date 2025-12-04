@@ -14,13 +14,50 @@ class InvoiceController extends Controller
     {
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $date = $request->input('date', now()->toDateString());
+
         $invoices = Invoice::with(['rentalSession', 'order', 'user'])
+            ->whereDate('created_at', $date)
             ->latest()
             ->paginate(20);
 
-        return view('invoices.index', compact('invoices'));
+        // Get all invoices for the date (not paginated) for stats calculation
+        $allInvoices = Invoice::whereDate('created_at', $date)->get();
+
+        // Calculate stats
+        $stats = [
+            // Console Only: has console charges but no food charges
+            'consoleOnly' => $allInvoices->where('console_charges', '>', 0)
+                ->where('food_charges', '=', 0)
+                ->count(),
+            'consoleOnlyRevenue' => $allInvoices->where('console_charges', '>', 0)
+                ->where('food_charges', '=', 0)
+                ->sum('total'),
+
+            // F&B Only: has food charges but no console charges
+            'foodOnly' => $allInvoices->where('food_charges', '>', 0)
+                ->where('console_charges', '=', 0)
+                ->count(),
+            'foodOnlyRevenue' => $allInvoices->where('food_charges', '>', 0)
+                ->where('console_charges', '=', 0)
+                ->sum('total'),
+
+            // Combined: has both console and food charges
+            'combined' => $allInvoices->where('console_charges', '>', 0)
+                ->where('food_charges', '>', 0)
+                ->count(),
+            'combinedRevenue' => $allInvoices->where('console_charges', '>', 0)
+                ->where('food_charges', '>', 0)
+                ->sum('total'),
+
+            // Totals
+            'totalInvoices' => $allInvoices->count(),
+            'totalRevenue' => $allInvoices->sum('total'),
+        ];
+
+        return view('invoices.index', compact('invoices', 'date', 'stats'));
     }
 
     public function create(Request $request)

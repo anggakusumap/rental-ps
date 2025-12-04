@@ -77,10 +77,8 @@
 
 <!-- Store Header -->
 <div class="header center">
-    <h1>The Room PlayStation</h1>
+    <h1>{{ config('app.name', 'The Room Playstation') }}</h1>
     <p>Gaming Center</p>
-    <p>Jl. Contoh No. 123</p>
-    <p>Tel: (0361) 123456</p>
 </div>
 
 <div class="double-line"></div>

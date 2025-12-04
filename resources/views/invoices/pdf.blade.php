@@ -104,11 +104,8 @@
 <body>
 <div class="header">
     <div class="company-info">
-        <h1>The Room PlayStation</h1>
+        <h1>{{ config('app.name', 'The Room Playstation') }}</h1>
         <p>Gaming Center</p>
-        <p>Address Line 1</p>
-        <p>City, State 12345</p>
-        <p>Phone: (123) 456-7890</p>
     </div>
     <div class="invoice-info">
         <div class="invoice-number">{{ $invoice->invoice_number }}</div>
